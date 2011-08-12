@@ -1,0 +1,7 @@
+SuperMaximo GameLibrary Pascal
+==============================
+By Max Foster
+
+License: http://creativecommons.org/licenses/by/3.0/
+
+A library of functions that simplify the process of game programming. It is a layer on top of OpenGL and SDL. This is a Pascal translation of the C++ version of the same library (although not quite as up to date or fully featured).
