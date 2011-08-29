@@ -9,18 +9,21 @@ unit Audio;
 
 interface
 
+//Initialise audio, with a specific number of audio channels
 procedure initAudio(channels : word = 16);
 procedure quitAudio;
 
+//Set a sound channel to simulate coming from a certain position in 3D space
 procedure soundPosition(channel : integer; angle : integer = 90; distance : integer = 0);
 
+//Set the music volume (0-100)
 procedure musicVolume(percentage : integer);
 
 procedure pauseMusic;
 procedure resumeMusic;
 procedure restartMusic;
 procedure stopMusic;
-procedure fadeMusic(time : longint);
+procedure fadeMusic(time : longint);//Fade out the music within a time period
 
 implementation
 

@@ -19,14 +19,20 @@ type
     size : word;
     name_ : string;
   public
+    //Create a new font with the specified name, loaded from the file specified and with the specified size
     constructor create(newName, fileName : string; newSize : word);
     destructor destroy;
 
     function name : string;
-    procedure write(text : string; x, y : integer; depth : real; useCache : boolean = true; rotation : real = 0.0; xScale : real = 1.0; yScale : real = 1.0);
+    //Draw some text onto the screen, at the specified coordinates. Set useCache to true to take advantage of the caching
+    //system that gives considerable speed boosts. This is highly recommended if you are displaying static text
+    procedure write(text : string; x, y : integer; depth : real; useCache : boolean = true; rotation : real = 0.0;
+              xScale : real = 1.0; yScale : real = 1.0);
+    //Get the dimentions of a string typed out using this particular font
     function width(text : string) : integer;
     function height(text : string) : integer;
 
+    //Cache text to take advantage of the caching system, and remove it once you are finished with it
     procedure cache(text : string);
     procedure removeFromCache(text : string);
   end;
@@ -40,6 +46,8 @@ function addFont(newName, fileName : string; newSize : word) : PFont;
 procedure destroyFont(searchName : string);
 procedure destroyAllFonts;
 
+//Clears the entire font cache. A good idea after transistioning from one level to the next, for example, so that the cache
+//does not get bloated with unused text over time
 procedure clearFontCache;
 
 implementation
@@ -77,7 +85,8 @@ begin
   result := name_;
 end;
 
-procedure TFont.write(text : string; x, y : integer; depth : real; useCache : boolean = true; rotation : real = 0.0; xScale : real = 1.0; yScale : real = 1.0);
+procedure TFont.write(text : string; x, y : integer; depth : real; useCache : boolean = true; rotation : real = 0.0;
+          xScale : real = 1.0; yScale : real = 1.0);
 var
   cacheSuccess : boolean;
   cacheIndex, i, w, h, letter : integer;
@@ -94,6 +103,8 @@ begin
 
   if (useCache) then
   begin
+    //Search the cache to see if the text to draw has already been cached (this is quicker than
+    //actually rendering the text from scratch)
     if (length(fontCache[letter]) > 0) then
     begin
       for i := 0 to length(fontCache[letter])-1 do
@@ -106,6 +117,7 @@ begin
         end;
       end;
     end;
+    //If not, cache it and research (cacheSuccess will be TRUE this time)
     if (not cacheSuccess) then
     begin
       cache(text);
@@ -121,6 +133,7 @@ begin
     end;
   end;
 
+  //If we don't want caching prepare the text surface
   if (not cacheSuccess) then
   begin
     color.r := 255;
@@ -136,6 +149,7 @@ begin
 
   if (cacheSuccess) then
   begin
+    //If we got the texture from the cache then bind it
     glBindTexture(GL_TEXTURE_RECTANGLE, fontCache[letter][cacheIndex].texture);
     w := fontCache[letter][cacheIndex].w;
     h := fontCache[letter][cacheIndex].h;
@@ -144,6 +158,7 @@ begin
   end
 else
   begin
+    //Otherwise put the text surface into graphics memory
     if (textSurface^.format^.BytesPerPixel = 4) then
     begin
       if (textSurface^.format^.Rmask = $000000ff) then textureFormat := GL_RGBA else textureFormat := GL_BGRA;
@@ -181,14 +196,17 @@ else
 
   glUseProgram(PShader(fontShader)^.getProgram);
   pushMatrix;
+    //Do the specified transforms
     translateMatrix(x, y, depth);
     rotateMatrix(rotation, 0.0, 0.0, 1.0);
     scaleMatrix(xScale, yScale, 0.0);
 
+    //Send down matrix and texture details to the shader
     PShader(fontShader)^.setUniform16(MODELVIEW_LOCATION, getMatrix(MODELVIEW_MATRIX));
     PShader(fontShader)^.setUniform16(PROJECTION_LOCATION, getMatrix(PROJECTION_MATRIX));
     PShader(fontShader)^.setUniform1(TEXSAMPLER_LOCATION, 0);
 
+    //Draw the text
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -197,6 +215,7 @@ else
 
   if (not cacheSuccess) then
   begin
+    //If we didn't want caching, remove the text from memory
     SDL_FreeSurface(textSurface);
     glDeleteTextures(1, @tempTexture);
     glDeleteBuffers(1, @vbo);
@@ -232,6 +251,7 @@ begin
   letter := ord(text[1]);
   if ((letter < ord('a')) or (letter > ord('z'))) then letter := ord('z')+1;
 
+  //Prepare the text surface to be put into graphics memory
   newRecord.text := text;
   newRecord.fontName := name_;
   TTF_SizeText(font, pchar(text), newRecord.w, newRecord.h);
@@ -249,6 +269,7 @@ else
   begin
     if (textSurface^.format^.Rmask = $000000ff) then textureFormat := GL_RGB else textureFormat := GL_BGR;
   end;
+  //Create the texture and put the surface into graphics memory
   glGenTextures(1, @newRecord.texture);
   glBindTexture(GL_TEXTURE_RECTANGLE, newRecord.texture);
   glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -271,6 +292,7 @@ else
 
   SDL_FreeSurface(textSurface);
 
+  //Generate a buffer to store the text rectangle vertex data
   glGenBuffers(1, @newRecord.vbo);
   glBindBuffer(GL_ARRAY_BUFFER, newRecord.vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*length(vertexArray), @vertexArray, GL_STATIC_DRAW);
@@ -290,6 +312,7 @@ begin
   letter := ord(text[1]);
   if ((letter < ord('a')) or (letter > ord('z'))) then letter := ord('z')+1;
 
+  //Linearly search through the cache, and if there is a match, remove the cached data
   if (length(fontCache[letter]) > 0) then
   begin
     for i := 0 to length(fontCache[letter])-1 do

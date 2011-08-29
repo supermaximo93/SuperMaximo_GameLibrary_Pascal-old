@@ -52,21 +52,23 @@ type
     uniformLocation_ : array[0..TEXCOMPAT_LOCATION] of GLint;
     name_ : string;
   public
+    //Load a shader from the files provided, with arrays of attributes used in the shader
     constructor create(newName, vertexShaderFile, fragmentShaderFile : string; enums : array of integer; attributeNames : array of string);
     destructor destroy;
 
     function name : string;
-    procedure bind;
-    procedure use;
-    function getProgram : GLhandle;
-    function setUniformLocation(dstLocation : integer; locationName : string) : GLint;
-    function uniformLocation(location : integer) : GLint;
+    procedure bind; //Bind the shader to be used when an object is drawn
+    procedure use;  //Binds the shader right now so that we can send down uniform data to it
+    function getProgram : GLhandle;  //Get the OpenGL handle for the program to be used in OpenGL functions
+    function setUniformLocation(dstLocation : integer; locationName : string) : GLint; //Tells the shader about uniform variables in the shader
+    function uniformLocation(location : integer) : GLint; //Returns the OpenGL location of the uniform variable in the shader
 
-    procedure setUniform16(location : integer; data : matrix4d);
-    procedure setUniform9(location : integer; data : matrix3d);
-    procedure setUniform1(location, data : integer);
-    procedure setUniform1(location : integer; data : GLfloat);
-    procedure setUniform4(location : integer; data1, data2, data3, data4 : GLfloat);
+    //Use these procedures to pass data to the shaders. Use the shader uniform location constants for the 'location' parameter
+    procedure setUniform16(location : integer; data : matrix4d); //Sends down a 4x4 matrix uniform to the shader
+    procedure setUniform9(location : integer; data : matrix3d); //Sends down a 3x3 matrix uniform to the shader
+    procedure setUniform1(location, data : integer);  //Sends down a single integer to the shader
+    procedure setUniform1(location : integer; data : GLfloat);  //Sends down a single GLfloat (which is equivalent to a Single) to the shader
+    procedure setUniform4(location : integer; data1, data2, data3, data4 : GLfloat); //Sends down a GLSL vec4 to the shader with four GLfloats
   end;
 
 function shader(searchName : string) : PShader;
@@ -93,6 +95,8 @@ begin
   name_ := newName;
   program_ := GLuint(nil);
   for i := 0 to EXTRA9_LOCATION do uniformLocation_[i] := -1;
+
+  //Load up the vertex shader file
   shaderText := '';
   vertexShaderFile := setDirSeparators(vertexShaderFile);
   fragmentShaderFile := setDirSeparators(fragmentShaderFile);
@@ -106,11 +110,13 @@ begin
   shaderText += #0;
   close(shaderFile);
 
+  //Create the vertex shader
   vertexShader := glCreateShader(GL_VERTEX_SHADER);
-  arr[0] := PGLChar(pchar(shaderText));
+  arr[0] := PGLChar(pchar(shaderText)); //Very awkward but its the only way I got it to work
   glShaderSource(vertexShader, 1, PPGLchar(arr), nil);
   glCompileShader(vertexShader);
 
+  //Check if our vertex shader compiled, otherwise throw an error and exit
   glGetShaderiv(vertexShader, GL_COMPILE_STATUS, @success);
   if (success = GL_FALSE) then
   begin
@@ -121,6 +127,7 @@ begin
     exit;
   end;
 
+  //Load the fragment shader file, tell OpenGL about it and error check it, as before
   shaderText := '';
   assign(shaderFile, fragmentShaderFile);
   reset(shaderFile);
@@ -147,16 +154,20 @@ begin
     exit;
   end;
 
+  //Create a GLSL program and attach the shaders to be processed
   program_ := glCreateProgram();
   glAttachShader(program_, vertexShader);
   glAttachShader(program_, fragmentShader);
 
+  //Tell the program about the attributes that have been passed in
   for i := 0 to length(enums)-1 do glBindAttribLocation(program_, enums[i], pchar(attributeNames[i]));
 
+  //Link the program and delete the shaders that are no longer needed
   glLinkProgram(program_);
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
+  //Error check
   glGetProgramiv(program_, GL_LINK_STATUS, @success);
   if (success = GL_FALSE) then
   begin

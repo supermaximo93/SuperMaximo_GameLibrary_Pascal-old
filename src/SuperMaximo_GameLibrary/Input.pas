@@ -15,35 +15,47 @@ const
   DPAD_LEFT = 2;
   DPAD_RIGHT = 3;
 
+//Initialises variables and detects any joysticks/gamepads that are plugged in
 procedure initInput;
 procedure quitInput;
 
+//Gets the latest input data for the frame
 procedure refreshEvents;
 
+//Returns true if the key corresponding to the keycode provided is pressed
 function keyPressed(code : integer) : boolean;
 
 procedure setMousePosition(x, y : integer);
 procedure hideCursor;
 procedure showCursor;
 
+//Returns the position of the mouse in each axis
 function mouseX : integer;
 function mouseY : integer;
 
+//Returns true if the particular mouse button is pressed
 function mouseLeft : boolean;
 function mouseRight : boolean;
 function mouseMiddle : boolean;
-function mouseOther : boolean;
+function mouseOther : boolean; //For any other side buttons on the mouse, for example
 
+//Returns true if the mouse wheel is being scrolled up/down
 function mouseWheelUp : boolean;
 function mouseWheelDown : boolean;
 
+//Returns true if the user clicked on the close button at the top of the window
 function closeClicked : boolean;
 
+//Returns the number of joysticks/gamepads connected to the computer
 function joystickCount : integer;
+//Returns whether a button corresponding to the code was pressed
 function joystickButtonPressed(code : integer; controllerId : integer = 0) : boolean;
 function joystickDpadPressed(code : integer; controllerId : integer = 0) : boolean;
+//The 'axis' on a joystick/gamepad is usually an analogue stick. This returns its position
 function joystickAxisValue(axis : integer; controllerId : integer = 0) : integer;
 
+//Flags the events to be refreshed again. This is automatically called by the 'refreshScreen'
+//procedure in the Display unit
 procedure resetEvents;
 
 implementation

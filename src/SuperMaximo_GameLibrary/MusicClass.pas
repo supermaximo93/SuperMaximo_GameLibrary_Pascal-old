@@ -18,6 +18,7 @@ type
     mixMusic : PMix_Music;
     name_ : string;
   public
+    //Load music with the specified name from the file provided
     constructor create(newName, fileName : string);
     destructor destroy;
     function name : string;

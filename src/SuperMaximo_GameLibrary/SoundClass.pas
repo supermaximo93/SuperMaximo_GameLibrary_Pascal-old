@@ -19,18 +19,23 @@ type
     volume_, currentChannel : integer;
     name_ : string;
   public
+    //Create a sound with the specified name, loaded up from a sound file
     constructor create(newName, fileName : string);
     destructor destroy;
     function name : string;
-    procedure setVolume(percentage : integer; relative : boolean = false);
+    procedure setVolume(percentage : integer; relative : boolean = false); //Set the volume of the sound (0-100)
     function volume : integer;
+
+    //Play the sound with the specified volume (0-100), channel and number of times to loop. Use the default
+    //parameters to play the sound at a previously set volume (may be 100), in any free channel and with 0 loops
     function play(newVolume : integer = -1; channel : integer = -1; loops : integer = 0) : integer;
     function playing : boolean;
     procedure stop;
-    procedure fade(time : longint);
-    procedure setSoundPosition(angle : integer = 90; distance : integer = 0);
+    procedure fade(time : longint); //Fade out the sound over a certain time period
+    procedure setSoundPosition(angle : integer = 90; distance : integer = 0); //Set the virtual position of the sound in 3D space
   end;
 
+//Allocate a number of channels to be used in sound playback (a good number is 16)
 procedure allocateSoundChannels(channels : word);
 
 function sound(searchName : string) : PSound;
