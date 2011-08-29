@@ -41,6 +41,12 @@ type
     customDrawFunction : customDrawFunctionType;
     procedure initBuffer;
   public
+    //Create a sprite with the specified name, loaded from a file. 'imageX/Y' are the coordinates of where to start 'cutting out' the sprite
+    //from the image provided, and 'imageWidth/Height' are the width and height of the new sprite. 'aniframes' is the number of frames that
+    //the sprite has, if provided on a spritesheet, and 'framerate' lets you set the animation speed in frames per second. 'newOrignX/Y' is the
+    //point on the sprite where it will pivot for rotation. 'customBufferFunction' allows you to pass a procedure pointer to your own sprite
+    //buffering procedure for advanced usage and 'customData' allows you to pass a pointer to the data you want to access in your custom buffer
+    //procedure
     constructor create(newName, fileName : string; imageX, imageY, imageWidth, imageHeight : integer; aniframes : integer = 1; framerate : word = 1;
       newOriginX : integer = 0; newOriginY : integer = 0; customBufferFunction : customSpriteBufferFunctionType = nil; customData : Pointer = nil);
     destructor destroy;
@@ -54,24 +60,31 @@ type
     function originX : integer;
     function originY : integer;
 
+    //Draws the sprite with the specified coordinates and transformations. 'alpha' is only for a convienience if you want to use it in a
+    //custom draw procedure where you send the alpha value as a shader uniform. The frame is used when using spritesheets. You can override
+    //the shader bound to the sprite or globally with 'shaderOverride' and override the drawing procedure with 'customDrawFunctionOverride'
     procedure draw(x, y, depth : real; rotation : real = 0.0; xScale : real = 1.0; yScale : real = 1.0; alpha : real = 1.0; frame : real = 1.0;
       shaderOverride : PShader = nil; customDrawFunctionOverride : customDrawFunctionType = nil);
-    procedure draw(objectParam : PGameObject);
-    procedure defaultDraw(shaderToUse : PShader; params : pSpriteDrawParams);
+    procedure draw(objectParam : PGameObject); //Draws the sprite from the details of a GameObject
+    procedure defaultDraw(shaderToUse : PShader; params : pSpriteDrawParams); //The default drawing procedure for the sprite
 
     function width : integer;
     function height : integer;
     function surface : PSDL_Surface;
-    function texture(frame : word) : GLuint;
+    function texture(frame : word) : GLuint; //Return the OpenGL texture ID for passing to OpenGL functions
     function vertices : word;
 
+    //Bind a shader to be used with the sprite instead of using one that is globally bound with globalBindShader or 'Shader.bind'
     procedure bindShader(newShader : PShader);
     function boundShader : PShader;
 
+    //Bind a custom draw procedure to be used when the sprite is drawn
     procedure bindCustomDrawFunction(newCustomDrawFunction : customDrawFunctionType);
     function boundCustomDrawFunction : customDrawFunctionType;
 
+    //Returns the OpenGL Vertex Array Object contained in the Sprite
     function vao : GLuint;
+    //Returns the OpenGL Vertex Buffer Object contained in the Sprite
     function vbo : GLuint;
   end;
 
@@ -144,13 +157,17 @@ type
     loadedFromObj : boolean;
     framerate_ : word;
 
+    //Has not been implemented
     procedure loadObj(path, fileName : string; customBufferFunction : customModelBufferFunctionType = nil; customData : Pointer = nil);
 
-    procedure loadSmm(fileName : string);
-    procedure loadSms(fileName : string);
-    procedure loadSma(fileName : string);
-    procedure loadSmo(path, fileName : string; customBufferFunction : customModelBufferFunctionType = nil; customData : Pointer = nil);
+    //Load SuperMaximo* files
+    procedure loadSmm(fileName : string);  //SuperMaximo Model
+    procedure loadSms(fileName : string);  //SuperMaximo Skeleton
+    procedure loadSma(fileName : string);  //SuperMaximo Animation
+    procedure loadSmo(path, fileName : string; customBufferFunction : customModelBufferFunctionType = nil;
+              customData : Pointer = nil);  //SuperMaximo Object
 
+    //Buffer the vertex data for each file type
     procedure initBufferObj;
     procedure initBufferSmo;
 
@@ -160,17 +177,23 @@ type
     procedure calculateHitbox(pBone_ : pbone; matrix : matrix4d);
     procedure drawBone(pBone_ : pbone; shaderToUse : PShader; skipHitboxes : boolean = false);
   public
-    constructor create(newName, path, fileName : string; framerate : word = 60; customBufferFunction : customModelBufferFunctionType = nil; customData : Pointer = nil);
+    //Loads a model, from the path and file name
+    constructor create(newName, path, fileName : string; framerate : word = 60; customBufferFunction : customModelBufferFunctionType = nil;
+                customData : Pointer = nil);
     destructor destroy;
 
     function name : string;
 
+    //Draw the model using details from a GameObject. You can skip animation and hitbox orientation to save processing time
+    //NOTE: The hitboxes probably don't work, and have actually been removed from the latest version of the library!
     procedure draw(objectParam : PGameObject; skipAnimation : boolean = false; skipHitboxes : boolean = false);
 
+    //Bind a shader to be used when drawing the model instead of a globally bound one
     procedure bindShader(newShader : PShader);
     function boundShader : PShader;
 
-    function animationId(searchName : string) : integer;
+    function animationId(searchName : string) : integer; //Return the ID of an animation with the specified name (-1 is returned on failure)
+
     procedure setFramerate(newFramerate : word);
     function framerate : word;
   end;
@@ -189,6 +212,7 @@ type
     customDrawFunction : customDrawFunctionType;
     fakeKeyFrame1, fakeKeyFrame2 : pkeyFrame;
   public
+    //Create a GameObject at the specified coordinates with either a sprite or model bound to it
     constructor create(newName : string; destX, destY, destZ : real; newSprite : PSprite = nil; startFrame : word = 0);
     constructor create(newName : string; destX, destY, destZ : real; newModel : PModel = nil);
     destructor destroy;
@@ -201,9 +225,11 @@ type
     function model : PModel;
     function hasModel : boolean;
 
+    //Bind a shader to be used when drawing instead of the globally bound one
     procedure bindShader(shader : PShader);
     function boundShader : PShader;
 
+    //Bind a custom draw procedure to be used when drawing the object
     procedure bindCustomDrawFunction(newCustomDrawFunction : customDrawFunctionType);
     function boundCustomDrawFunction : customDrawFunctionType;
 
@@ -224,8 +250,9 @@ type
     function yScale : real;
     function zScale : real;
 
+    //Rotate by an amount around each axis. Set 'recalculateDimensions' to recalculate sprite bounds for collisions
     procedure rotate(xAmount, yAmount, zAmount : real; relative : boolean = false; recalculateDimensions : boolean = true);
-    function rotate(amount : real; relative : boolean = false; recalculateDimensions : boolean = true) : real;
+    function rotate(amount : real; relative : boolean = false; recalculateDimensions : boolean = true) : real; //2D rotation (i.e. around Z axis)
     function xRotation : real;
     function yRotation : real;
     function zRotation : real;
@@ -233,19 +260,23 @@ type
     function setAlpha(amount : real; relative : boolean = false) : real;
     function alpha : real;
 
+    //Set and get the animation that the object is playing
     procedure setCurrentAnimation(animationId : word);
     function currentAnimation : word;
 
     procedure setFrame(newFrame : real; relative : boolean = false);
     function frame : real;
 
-    procedure animate(start, finish : word; animationId : word = 0);
+    procedure animate(start, finish : word; animationId : word = 0); //Animate between two particular frames
+
+    //Interpolate between the frame of one animation and the frame of another animation, over a set time period in frames
     procedure setInterpolation(startFrame, animation1Id, endFrame, animation2Id, numFramesToTake : integer);
-    procedure setInterpolation;
+    procedure setInterpolation; //Stop interpolation
     function interpolating : boolean;
 
     procedure draw(skipAnimation : boolean = false; skipHitboxes : boolean = false);
 
+    //2D collision detection for sprites
     function mouseOverBox : boolean;
     function roughMouseOverBox : boolean;
     function mouseOverCircle(extraX : real = 0; extraY : real = 0; extraZ : real = 0) : boolean;
@@ -254,19 +285,24 @@ type
     function circleCollision(other : PGameObject; extraX1 : real = 0; extraY1 : real = 0; extraZ1 : real = 0; extraX2 : real = 0; extraY2 : real = 0;
       extraZ2 : real = 0) : boolean;
 
+    //3D hitbox collision detection
+    //NOTE: Does not work, and has been removed from newer versions of the library!
     function roughHitboxCollision(bone1, bone2 : pbone) : boolean;
     function hitBoxCollision(bone1, bone2 : pbone) : boolean;
     function roughModelCollision(other : PGameObject; hitboxId : integer = -1; hitboxOtherId : integer = -1) : boolean;
     function modelCollision(other : PGameObject; hitboxId : integer = -1; hitboxOtherId : integer = -1) : boolean;
   end;
 
+//Set a model to be in a particular pose from data in a keyframe
 procedure setKeyFrame(frame : pkeyFrame; model : PModel);
 
 function subtractNormal(operandNormal, subtractingNormal : normal) : normal;
 function subtractVertex(operandVertex, subtractingVertex : vertex) : vertex;
 
+//Get the surface normal of a triangle in 3D space
 function getSurfaceNormal(srcTriangle : ptriangle) : normal;
 
+//Initialise the variables in a box
 procedure initBox(dstBox : pbox);
 
 

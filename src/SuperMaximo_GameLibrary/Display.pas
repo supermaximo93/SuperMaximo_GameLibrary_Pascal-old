@@ -64,58 +64,94 @@ const
 type
   customDrawFunctionType = procedure(pClass : Pointer; shader : PShader; data : Pointer);
 
+//Create a window to draw on with the specified dimentions. ('depth' is the depth in 3D space). 'maxFramerate' is the maximum framerate the game
+//is allowed to run at. The library automatically compensates for framerate issues. Set maxFramrate to 0 to go at full pelt!
 function initDisplay(width, height, depth : word; maxFramerate : word = 0; fullScreen : boolean = false; windowTitle : string = 'My Game') : boolean;
 procedure quitDisplay;
+
+//Get the window dimentions and resize it
 function screenWidth : integer;
 function screenHeight : integer;
 function resizeScreen(width, height : word; fullScreen : boolean = false) : boolean;
 
-function getPerspectiveMatrix(left, right, bottom, top, near, far : real) : matrix4d;
+//Get projection matrices for both perspective and orthographic projection
+function getPerspectiveMatrix(left, right, bottom, top, front, back : real) : matrix4d;
 function getPerspectiveMatrix(angle, aspectRatio, front, back : real) : matrix4d;
-function getOrthographicMatrix(left, right, bottom, top, near, far : real) : matrix4d;
+function getOrthographicMatrix(left, right, bottom, top, front, back : real) : matrix4d;
 
+//Bind a shader to be used when an object is drawn (has the same effect as TShader.bind)
 procedure globalBindShader(shader : PShader);
 function globalBoundShader : PShader;
 
+//Overwrite a sprite the default sprite drawing procedure with your own
 procedure globalBindCustomDrawFunction(newCustomDrawFunction : customDrawFunctionType);
 function globalBoundCustomDrawFunction : customDrawFunctionType;
 
+//Binds the OpenGL texture unit specified so that you can bind multiple textures at once
+//Is equivalent to calling glActiveTexture
 procedure bindTextureUnit(textureUnit : GLenum);
 function boundTextureUnit : GLenum;
 
+//Bind the matrix stack that you want to manipulate
 procedure setMatrix(matrixId : integer);
 function currentMatrix : integer;
+//Copy the data from the top of one matrix stack to another
 procedure copyMatrix(srcMatrixId, dstMatrixId : integer);
+//Copy your own matrix data to the top of a matrix stack
 procedure copyMatrix(srcMatrix : matrix4d; dstMatrixId : integer);
+//Return the matrix data on the top of the matrix stack
 function getMatrix(matrixId : integer) : matrix4d;
+//Push the current matrix data onto the stack, which effectively 'saves' the matrix data
+//and gives you another copy of the matrix to use
 procedure pushMatrix;
+//Pop the current matrix of the stack and go back to the matrix state that you were using before
 procedure popMatrix;
 
+//Perform a translation with the specified amounts in each axis
 procedure translateMatrix(x, y, z : real);
+//Perform a rotation with the specified angle, and ratios of that angle in each axis
 procedure rotateMatrix(angle, x, y, z : real);
+//Scale the matrix up or down in each axis
 procedure scaleMatrix(xScale, yScale, zScale : real);
 
+//Multiply two 4x4 matrices together
 function multiplyMatrix(operandMatrix, multiplierMatrix : matrix4d) : matrix4d;
+//Set a 4x4 matrix to the identity matrix
 procedure initIdentityMatrix(var dstMatrix : matrix4d);
 
+//Swaps the framebuffers and tells the Input unit that it can gather input data again. This procedure MUST be called at least once
+//in a game loop!
 procedure refreshScreen;
 function getFramerate : word;
-function getTickDifference : word;
+function getTickDifference : word; //Get the time difference between frames
+
+//Set the 'ideal' framerate. This is the speed that the game will simulate, independently of what framerate the game is actually at
+//This means that people with slower computers will not have the gameplay slowed down, and people with faster computers
+//will not have the gameplay sped up. This can also be useful for slow motion effects!
 procedure setIdealFramerate(newIdealFramerate : word);
 function getIdealFramerate : word;
+
+//Multiply values that you want to increment by independently of the framerate to the return value of this function.
+//I.e. if you want A to equal 60 (starting from 0) in exactly one second when the idealFramerate is set to 60, just do:
+//A += compensation;
+//And A will equal 60 in one second (with an idealFramerate of 60) on any computer! For 120 in one second just use 2.0*compensation, etc.
 function compensation : real;
 
+//Enable/disable colour blending (have a look at some OpenGL documentation on glBlendFunc and glBlendEquation for a detailed explanation)
 procedure enableBlending(srcBlendFunc : GLenum = ONE; dstBlendFunc : GLenum = ZERO; blendFuncEquation : GLenum = FUNC_ADD);
 procedure disableBlending;
 function blendingEnabled : boolean;
 
+//Enable/disable depth testing in 3D space
 procedure enableDepthTesting;
 procedure disableDepthTesting;
 function depthTestingEnabled : boolean;
 
+//Return the OpenGL and GLSL version
 function openGlVersion : real;
 function glSlVersion : real;
 
+//Return whether Vertex Array Objects are supported
 function vertexArrayObjectSupported : boolean;
 
 implementation
@@ -237,28 +273,28 @@ begin
   end else result := false;
 end;
 
-function getPerspectiveMatrix(left, right, bottom, top, near, far : real) : matrix4d;
+function getPerspectiveMatrix(left, right, bottom, top, front, back : real) : matrix4d;
 var
   returnMatrix : matrix4d;
 begin
-  returnMatrix[0] := (2.0*near)/(right-left);
+  returnMatrix[0] := (2.0*front)/(right-left);
   returnMatrix[1] := 0.0;
   returnMatrix[2] := 0.0;
   returnMatrix[3] := 0.0;
 
   returnMatrix[4] := 0.0;
-  returnMatrix[5] := (2.0*near)/(top-bottom);
+  returnMatrix[5] := (2.0*front)/(top-bottom);
   returnMatrix[6] := 0.0;
   returnMatrix[7] := 0.0;
 
   returnMatrix[8] := (right+left)/(right-left);
   returnMatrix[9] := (top+bottom)/(top-bottom);
-  returnMatrix[10] := (-(far+near))/(far-near);
+  returnMatrix[10] := (-(back+front))/(back-front);
   returnMatrix[11] := -1.0;
 
   returnMatrix[12] := 0.0;
   returnMatrix[13] := 0.0;
-  returnMatrix[14] := (-2.0*far*near)/(far-near);
+  returnMatrix[14] := (-2.0*back*front)/(back-front);
   returnMatrix[15] := 0.0;
   result := returnMatrix;
 end;
@@ -276,7 +312,7 @@ begin
   result := returnMatrix;
 end;
 
-function getOrthographicMatrix(left, right, bottom, top, near, far : real) : matrix4d;
+function getOrthographicMatrix(left, right, bottom, top, front, back : real) : matrix4d;
 var
   returnMatrix : matrix4d;
 begin
@@ -292,12 +328,12 @@ begin
 
   returnMatrix[8] := 0.0;
   returnMatrix[9] := 0.0;
-  returnMatrix[10] := -2.0/(far-near);
+  returnMatrix[10] := -2.0/(back-front);
   returnMatrix[11] := 0.0;
 
   returnMatrix[12] := -((right+left)/(right-left));
   returnMatrix[13] := -((top+bottom)/(top-bottom));
-  returnMatrix[14] := -((far+near)/(far-near));
+  returnMatrix[14] := -((back+front)/(back-front));
   returnMatrix[15] := 1.0;
   result := returnMatrix;
 end;
